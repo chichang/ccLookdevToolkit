@@ -33,7 +33,6 @@ for sg in sgrpList:
             pass
 
 import maya.cmds as mc
-
 def texStatus():
     '''
     quick check stats for all the texture files in the scene.
@@ -784,6 +783,18 @@ def shaderRecon():
 
 
 
+
+
+#http://pymotw.com/2/imp/
+
+#import imp
+#foo = imp.find_module('/X/tools/binlinux/apps/Mari2.6v4/3rdParty/lib/python2.6/site-packages/PySide/')
+#foo = imp.find_module('PySide')
+#print foo
+#['/X/tools/binlinux/apps/Mari2.6v1/3rdParty/lib/python2.6/site-packages/PySide']
+#['/X/tools/python/3rd_party/linux_python2.7/PySide']
+
+#/USERS/chichang/lib64:/X/projects/fom/SHOTS/TRAILER_C/chichang/lib64:/X/projects/fom/SHOTS/TRAILER_C/lib/lib64:/X/projects/fom/lib64:/X/tools/liblinux:/X/tools/binlinux/arnold/arnold-4.2.1.2/bin:/X/tools/binlinux/apps/peregrine/yeti-UNK/maya2014/bin:/X/tools/python/bin/linux_python2.7/lib:/X/tools/binlinux/vray/maya2015/vray_2.45.01.24958/maya/lib:/X/tools/binlinux/apps/RisingSunResearch/cineSpace:/X/tools/binlinux/sesi/hfs13.0.547/dsolib:/X/tools/binlinux/apps/OFX/Plugins/genarts/SapphireOFX/lib64:/X/tools/XRender/lib:/usr/lib64:/usr/lib:/lib:.
 #tmi
 # IN130 door lock texture / rig
 # CB030 city of bones texture.
@@ -1337,9 +1348,6 @@ camSeqRender("shot02")
 
 
 
-
-
-
 startTime=None
 endTime=None
 import maya.mel as mel
@@ -1348,3 +1356,58 @@ while(startTime < endTime):
     mel.eval('renderWindowRender redoPreviousRender renderView;')
     startTime += 1
     mel.eval('currentTime %s ;'%(startTime))
+
+
+
+
+#alIdAutosetup
+import maya.cmds as mc
+
+mc.setAttr("alSurface6.id1", 1.0, 1.0, 1.0)
+
+
+als = mc.ls(type="alSurface")
+NUM_MAT_ID = 8
+idCount = 1
+#if number of material is more tham 8 ..
+def initIdColor():
+    for s in als:
+        for id in range(1, NUM_MAT_ID+1):
+            mc.setAttr(s+".id"+str(id), 0.0, 0.0, 0.0)
+    pass
+
+initIdColor()
+
+
+def setIdColor(id, shaders, r, g, b):
+    for s in shaders:
+        print "setting color for " + s + "..."
+        mc.setAttr(s+".id"+str(id), r, g, b)
+    pass
+
+alIdDict = dict()
+for i in range(1, NUM_MAT_ID+1):
+    alIdDict[i] =[] 
+
+for m in als:
+    print m
+
+    alIdDict[idCount].append(m)
+    
+    if idCount == 8:
+        idCount = 1
+        print idCount
+    else:
+        idCount += 1
+
+for key in alIdDict.keys():
+    print key
+    if key%3 == 1:
+        print "R"
+        setIdColor(key, alIdDict[key], 1.0,0.0,0.0)
+    elif key%3 == 2:
+        print "G"
+        setIdColor(key, alIdDict[key], 0.0,1.0,0.0)
+    elif key%3 == 0:
+        print "B"
+        setIdColor(key, alIdDict[key], 0.0,0.0,1.0)
