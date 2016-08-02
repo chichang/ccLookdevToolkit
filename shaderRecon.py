@@ -991,10 +991,6 @@ for i in range(0, mc.polyEvaluate("polySurfaceShape1", v=True)):
 
 
 
-
-
-
-
 import maya.cmds as mc
 EXBAND_RANGE = 2
 #selVerts = mc.ls(sl=True)
@@ -1007,10 +1003,6 @@ for t in range(0,EXBAND_RANGE):
         v = mc.polyListComponentConversion(i, ff=True, tv=True)
         mc.select(v, add=True)
     
-
-
-
-
 
 #LUNA VIEWPORT 2 TESTS
 #lightri
@@ -1360,54 +1352,480 @@ while(startTime < endTime):
 
 
 
-#alIdAutosetup
+
+
+
+from arnold import *
+import random
+
+ass_file = "/Path/To/Ass/File.ass"
+
+userAttrToFind = "idGroup"
+
+#load the ass file
+AiBegin()
+AiMsgSetConsoleFlags(AI_LOG_ALL)
+AiASSLoad(ass_file, AI_NODE_ALL)
+
+# Iterate over all shape nodes
+shapeIter = AiUniverseGetNodeIterator(AI_NODE_SHAPE);
+
+while not AiNodeIteratorFinished(shapeIter):
+    
+    node = AiNodeIteratorGetNext(shapeIter)
+
+    #check if this node is a polygon mesh.
+    if AiNodeIs(node, "polymesh"):
+
+        #find if user attribute is found on the shape
+        userPramIter = AiNodeGetUserParamIterator(node)
+
+        while not AiUserParamIteratorFinished(userPramIter):
+
+            #find the user attribte
+            entry = AiUserParamIteratorGetNext(userPramIter)
+            entryName = AiUserParamGetName(entry)
+
+            if  entryName == userAttrToFind:
+                print "found user attribute on shape " + AiNodeGetName(node)
+                print entryName, ":", str(AiNodeGetInt(node, userAttrToFind))
+
+                #here is an example of simply setting the attribute to a random number.
+                newVal = random.choice([1,2,3,4,5])
+                print "setting " + userAttrToFind + " to => " +str(newVal)
+                AiNodeSetInt(node, userAttrToFind, newVal)
+                
+        #end the user Pram loop
+        AiUserParamIteratorDestroy(userPramIter)
+
+    else:
+        #print "not a polygon mesh"
+        pass
+
+#end the shape loop
+AiNodeIteratorDestroy(shapeIter)
+
+#save and quit
+AiASSWrite(ass_file, AI_NODE_ALL, True)
+AiEnd()
+
+
+
+
+
+
+
+
 import maya.cmds as mc
 
-mc.setAttr("alSurface6.id1", 1.0, 1.0, 1.0)
+shadingGroups = mc.ls(type="shadingEngine")
+
+for sg in shadingGroups:
+    connectedShader = mc.connectionInfo(sg+".surfaceShader", sfd=True)
+    connectedShader = connectedShader.split(".")[0]
+    #print sg+ " => " + connectedShader
+    if sg != connectedShader+"SG":
+        try:
+            mc.rename(sg, connectedShader+"SG")
+            print "renaming " + sg + " => " + connectedShader+"SG"
+        except:
+            print "can not rename shading group: " + sg
 
 
-als = mc.ls(type="alSurface")
-NUM_MAT_ID = 8
-idCount = 1
-#if number of material is more tham 8 ..
-def initIdColor():
-    for s in als:
-        for id in range(1, NUM_MAT_ID+1):
-            mc.setAttr(s+".id"+str(id), 0.0, 0.0, 0.0)
-    pass
-
-initIdColor()
 
 
-def setIdColor(id, shaders, r, g, b):
-    for s in shaders:
-        print "setting color for " + s + "..."
-        mc.setAttr(s+".id"+str(id), r, g, b)
-    pass
 
-alIdDict = dict()
-for i in range(1, NUM_MAT_ID+1):
-    alIdDict[i] =[] 
+allStandin = mc.ls(type = "aiStandIn")
 
-for m in als:
-    print m
+for i in allStandin:
+    print i
+    mc.setAttr(i+".primaryVisibility", 0)
 
-    alIdDict[idCount].append(m)
+
+
+
+
+
+
+
+
+
+
+
+import maya.cmds as mc
+mesh = mc.ls(sl=True)[0]
+if mc.nodeType(mesh)=="transform":
+    meshShape = mc.listRelatives(s=True)[-1]
+else:
+    meshShape = mesh
+print "selected mesh: ", meshShape
+
+furShapes = mc.ls(type="pgYetiMaya")
+groomShapes = mc.ls(type="pgYetiGroom")
+
+print furShapes
+print groomShapes
+
+#connect fur
+for f in furShapes:
+    print "connecting", f, "to mesh."
+    try:
+        mc.connectAttr(meshShape+".worldMesh[0]", f+".inputGeometry[0]")
+    except:
+        print "error connecting ", f
+
+#connect groom
+for g in groomShapes:
+    print "connecting", g, "to mesh."
+    try:
+        mc.connectAttr(meshShape+".worldMesh[0]", g+".inputGeometry")
+    except:
+        print "error connecting ", g
+
+
+
+
+def name_clash():
+    import maya.cmds as mc
+    geo = mc.ls(type="mesh")
+    a = []
+    for i in geo:
+        name = i.split(":")[-1]
+        #print name
+        if name in a:
+            print "AHHH!!!", name
+        else:
+            a.append(name)
+    print a
+
+
+
+
+
+
+
+
+toInstance = "ArnoldStandIn"
+import maya.cmds as mc
+counter = 0
+max = None
+trees = mc.ls(type="transform")
+
+if not max:
+    max = len(trees)
+
+print "building ", max, "trees ..."
+
+for i in trees:
+    if "tree_standin" in i:
+        trans = mc.xform(i, t=True, q=True, ws = True)
+        rot = mc.xform(i, ro=True, q=True)
+        sca = mc.xform(i, s=True, q=True)
+
+        new = mc.instance(toInstance)
+        
+        mc.xform(new, t=trans)
+        mc.xform(new, ro=rot)
+        mc.xform(new, s=[sca[0]*2, sca[1]*2, sca[2]*2])
+        
+        counter += 1
+        
+        if counter > max:
+            break
+
+
+
+
+
+import maya.cmds as mc
+import random
+
+#set range here
+randomRange = 50
+searchString = None
+
+def setAllVMeshOffset(randomRange, searchString):
+    vrayMeshList = mc.ls(type = "VRayMesh")
+    randMax = randomRange
+    randMim = -randomRange
+    for m in vrayMeshList:
+        val =random.randint(randMim, randMax)
+        
+        if searchString:
+            if searchString in m:
+                print "setting ", m, " offset value to ", val
+                mc.setAttr(m+".animOffset", val)
+                mc.setAttr(m+".animType", 2)
+        else:
+            print "setting ", m, " offset value to ", val
+            mc.setAttr(m+".animOffset", val)
+            mc.setAttr(m+".animType", 2)
+
+#run
+setAllVMeshOffset(randomRange, searchString)
+
+
+
+
+#replace swap texture path
+import maya.cmds as mc
+new_file = "/mnt/X/projects/mena/SHOTS/TRANQUILANDIA/lib/textures/COCA_PLANT_A/COCA_PLANT_A_tex_fullres/v002/GreenAshLeaf_single.exr"
+old_file = "/mnt/X/projects/mena/SHOTS/TRANQUILANDIA/lib/textures/COCA_PLANT_A/COCA_PLANT_A_tex_fullres/v001/GreenAshLeaf.exr"
+#old_file = "/mnt/X/projects/mena/SHOTS/TRANQUILANDIA/lib/textures/COCA_PLANT_A/COCA_PLANT_A_tex_fullres/v001/GreenAshLeaf.exr"
+files = mc.ls(type="file")
+for i in files:
+    file_path = mc.getAttr(i+".fileTextureName")
+    if file_path == old_file:
+        print i
+        mc.setAttr(i+".fileTextureName", new_file, type="string")
+
+
+#setp through sub-frames
+import maya.cmds as mc
+import time
+ct = mc.currentTime(q=True)
+print ct
+step = 0.01
+nt=ct
+for i in range(0, 100):
+    time.sleep(0.01)
+    nt = nt+step
+    mc.currentTime(nt, e=True)
+
+
+
+
+#############NUKE###############
+
+##########################################
+#	p_Noise3D
+##########################################
+set cut_paste_input [stack 0]
+version 9.0 v6
+push $cut_paste_input
+Expression {
+ temp_name0 fBmNoise
+ temp_expr0 fBm((r+offset.x)*1/size.x,(g+offset.y)*1/size.y,(b+offset.z)*1/size.z,octaves,lacunarity,gain)*.5+0.5
+ temp_name1 turbNoise
+ temp_expr1 turbulence((r+offset.x)*1/size.x,(g+offset.y)*1/size.y,(b+offset.z)*1/size.z,octaves,lacunarity,gain)
+ channel0 alpha
+ expr0 "parent.useAlpha && a == 0 ? 0 : (noisetype==0?fBmNoise:noisetype==1?turbNoise:0)"
+ name Expression3
+ selected true
+ xpos 390
+ ypos -419
+}
+##########################################
+
+
+
+###########COCA POSTBUILD
+import maya.cmds as mc
+mtls = mc.ls(type="VRayMtl")
+for i in mtls:
+    if "COCA" in i:
+        print i
+        mc.setAttr(i+".reflectionSubdivs", 2)
+        mc.setAttr(i+".reflectionColorAmount", 0)
+    if "TREE" in i:
+        print i
+        mc.setAttr(i+".reflectionSubdivs", 2)
+        mc.setAttr(i+".reflectionColorAmount", 0)
+        
+wrapper = mc.ls(type="VRayMtlWrapper")
+for i in wrapper:
+    if "COCA" in i:
+        print i
+        mc.setAttr(i+".receiveGIMultiplier", 1)
+    if "TREE" in i:
+        print i
+        mc.setAttr(i+".receiveGIMultiplier", 1)
+
+vmesh = mc.ls(type="VRayMesh")
+for i in vmesh:
+    mc.setAttr(i+".showBBoxOnly", 1)
     
-    if idCount == 8:
-        idCount = 1
-        print idCount
-    else:
-        idCount += 1
+def setAllFileFilter():
+    allFile = mc.ls(type = "file")
+    for i in allFile:
+        mc.setAttr(i+".filterType", 0)
+setAllFileFilter()
 
-for key in alIdDict.keys():
-    print key
-    if key%3 == 1:
-        print "R"
-        setIdColor(key, alIdDict[key], 1.0,0.0,0.0)
-    elif key%3 == 2:
-        print "G"
-        setIdColor(key, alIdDict[key], 0.0,1.0,0.0)
-    elif key%3 == 0:
-        print "B"
-        setIdColor(key, alIdDict[key], 0.0,0.0,1.0)
+'''
+import maya.cmds as cmds
+
+# Close ports if they were already open under another configuration
+try: cmds.commandPort(name=":7001", close=True)
+except: cmds.warning('Could not close port 7001 (maybe it is not opened yet...)')
+try: cmds.commandPort(name=":7002", close=True)
+except: cmds.warning('Could not close port 7002 (maybe it is not opened yet...)')
+
+# Open new ports
+cmds.commandPort(name=":7001", sourceType="mel")
+cmds.commandPort(name=":7002", sourceType="python")
+'''
+
+
+'''
+from DefinedAssets import DefinedAssets
+from Asset import Asset
+
+da = DefinedAssets("testing","GOTHAM", shot_only=False)
+all_assets = da.assets()
+
+for asset in all_assets:
+    print asset
+
+#a = da.getAsset("TRAILER_C_lookdev")
+#print a
+#print a.name()
+#print a.id()
+
+
+from XAssets import assets
+rig_asset = assets.RigAsset()
+print rig_asset
+print rig_asset.setAssetName("GOTHAM_rig")
+print rig_asset.getAssetName()
+print rig_asset.getCategory()
+print rig_asset.get
+
+#print rig_asset.info()
+
+
+tt_rig_asset = Asset()
+tt_rig_asset.setName("TURNTABLE_rig")
+tt_rig_asset.setCategory("maya_rig")
+ld_asset.setDirFlag("one")
+ld_asset.setPublishDir("")
+ld_asset.setType(define_attrs.get('type'))
+ld_asset.setDescription(description)
+ld_asset.setExtension(define_attrs.get('extension'))
+
+print tt_rig_asset
+'''
+
+
+
+
+
+
+
+
+
+
+'''
+oiio_iv
+export LD_LIBRARY_PATH=/USERS/chichang/lib64:/X/projects/testing/SHOTS/_default/chichang/lib64:/X/projects/testing/SHOTS/_default/lib/lib64:/X/projects/testing/lib64:/X/tools/liblinux:/X/tools/binlinux/arnold/arnold-4.2.3.1/bin:/X/tools/binlinux/apps/peregrine/yeti-UNK/maya2015/bin:/X/tools/python/bin/linux_python2.7/lib:/X/tools/binlinux/vray/maya2015/vray_3.05.04.25341/maya/lib:/X/tools/binlinux/apps/RisingSunResearch/cineSpace:/X/tools/binlinux/sesi/hfs14.0.258/dsolib:/X/tools/binlinux/apps/OFX/Plugins/genarts/SapphireOFX/lib64:/X/tools/XRender/lib:/usr/lib64:/usr/lib:/lib:/X/tools/packages/gcc-4.1/glew/glew-1.10.0/lib64
+
+'''
+
+from XAssets import assets
+import os
+#help(assets)
+
+assets = assets.CategoryManager()
+
+asset = assets.get_asset("render")
+#print asset
+#help(asset)
+asset.setShow("maury")
+asset.setShot("109_0210")
+asset.setAssetName("GRENADE_BEAUTY")
+
+print asset.parents()
+print asset.assetId()
+print asset.getAssetName()
+print asset.getPublishDir()
+print asset.getCategory()
+print asset.getName()
+print asset.getPublishVersion()
+print asset.latestVersion()
+print asset.isPublished()
+
+
+#help(assets)
+
+asset = assets.get_asset("render")
+
+#print asset
+#help(asset)
+asset.setShow(os.getenv("SHOW"))
+asset.setShot(os.getenv("SHOT"))
+asset.setAssetName("DUCK_BEAUTY")
+
+asset.setDailies(d=False)
+asset.setOperation(op=1) #COPY
+asset.setPublishDir("images/ltm/DUCK")
+asset.setPublishVersion(asset.getPublishVersion())
+asset.setSource("/X/projects/testing/SHOTS/ARNOLD/chichang/images/elements/Tfi_Test/v005/BEAUTY/Tfi_Test_BEAUTY_v005.%04d.exr")
+#/X/projects/maury/SHOTS/109_0360/chichang/images/elements/lighting/v005/SPECULAR/109_0360_lighting_v005_SPECULAR.%04d.exr
+print asset.getPublishVersion()
+print asset.getPublishDir()
+print asset.getPublishDestination()
+print asset.getPublishPath()
+print asset.getName()
+
+print asset.isPublished()
+#Before publishing, create the asset define name.
+asset.prePublish()
+#asset.publish()
+
+
+
+
+
+
+from XAssets import assets
+import os
+#help(assets)
+
+assets = assets.CategoryManager()
+
+asset = assets.get_asset("texture")
+#print asset
+#help(asset)
+asset.setShow("maury")
+asset.setShot("GRENADE")
+asset.setAssetName("GRENADE_tex_src")
+
+print asset.parents()
+print asset.assetId()
+print asset.getAssetName()
+print asset.getPublishDir()
+print asset.getCategory()
+print asset.getName()
+print asset.getPublishVersion()
+print asset.latestVersion()
+print asset.isPublished()
+
+
+#help(assets)
+
+asset = assets.get_asset("texture")
+
+#print asset
+#help(asset)
+asset.setShow(os.getenv("SHOW"))
+asset.setShot(os.getenv("SHOT"))
+asset.setAssetName("DUCK_tex_src")
+
+asset.setDailies(d=False)
+asset.setOperation(op=1) #COPY
+asset.setPublishDir("textures/DUCK") # textures/ASSET
+asset.setPublishVersion(asset.getPublishVersion())
+asset.setSource("/X/projects/testing/SHOTS/ARNOLD/chichang/textures/female")
+asset.addSource("/X/projects/testing/SHOTS/ARNOLD/chichang/textures/male")
+#/X/projects/maury/SHOTS/109_0360/chichang/images/elements/lighting/v005/SPECULAR/109_0360_lighting_v005_SPECULAR.%04d.exr
+print asset.getPublishVersion()
+print asset.getPublishDir()
+print asset.getCategory()
+print asset.getPublishDestination()
+#print asset.getPublishPath()
+print asset.getName()
+
+print asset.isPublished()
+#Before publishing, create the asset define name.
+asset.prePublish()
+asset.publish()
+print asset.isPublished()
