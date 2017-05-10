@@ -1,4 +1,4 @@
 ccLookdevToolkit
 ================
 
-set of scripts to help the lookdev process.
+day to day code snippets for lookdev and lighting debugging.
